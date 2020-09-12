@@ -1,0 +1,8 @@
+!.gitignore
+*.pyc
+*.pth
+pre_train/
+*.csv
+*.exe
+.idea/
+_pycache_/

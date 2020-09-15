@@ -6,3 +6,4 @@ pre_train/
 *.exe
 .idea/
 _pycache_/
+result/

@@ -2,7 +2,7 @@
 
 __author__ = 'matt'
 __email__ = 'mattemail@foxmail.com'
-__copyright__ = 'Copyright @ 2020/9/11 0011, matt '
+__copyright__ = 'Copyright @ 2020/9/15 0015, matt '
 
 import sys
 sys.path.append("..")
@@ -26,7 +26,7 @@ test_transform = transforms.Compose([
 ])
 
 
-def get_mnist_dataset(state="train", batch_size=64):
+def get_cifar_dataset(state="train", batch_size=64):
 
     trans = None
     if state == "train":
@@ -34,8 +34,6 @@ def get_mnist_dataset(state="train", batch_size=64):
     else:
         trans = test_transform
 
-    dataset = torchvision.datasets.MNIST(root='data', train=True, download=True, transform=trans)
+    dataset = torchvision.datasets.CIFAR10(root='cifar_data', train=True, download=True, transform=trans)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=config.num_worker)
     return loader
-
-

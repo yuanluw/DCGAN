@@ -11,10 +11,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import torch
+from torch import autograd
+import torchvision
+import torchsnooper
 
 import config
 
 cur_path = os.path.abspath(os.path.dirname(__file__))
+Tensor = torch.cuda.FloatTensor if config.device else torch.FloatTensor
 
 
 def de_norm(x):
@@ -24,8 +28,8 @@ def de_norm(x):
 
 def plot_loss(d_losses, g_losses, num_epoch, net_name="", dataset_name=""):
     fig, ax = plt.subplots()
-    ax.set_xlim(0, num_epoch)
-    ax.set_ylim(0, max(np.max(g_losses), np.max(d_losses))*1.1)
+    ax.set_xlim(0, num_epoch+1)
+    ax.set_ylim(min(np.min(g_losses), np.min(d_losses))*1.1, max(np.max(g_losses), np.max(d_losses))*1.1)
     plt.xlabel(f'Epoch {num_epoch+1}')
     plt.ylabel("loss values")
     plt.plot(d_losses, label='Discriminator')
@@ -34,7 +38,7 @@ def plot_loss(d_losses, g_losses, num_epoch, net_name="", dataset_name=""):
 
     if not os.path.exists(config.save_dir):
         os.mkdir(config.save_dir)
-    save_fn = os.path.join(config.save_dir, f"{dataset_name}_{net_name}_{num_epoch+1}.png")
+    save_fn = os.path.join(config.save_dir, f"{dataset_name}_{net_name}_{num_epoch+1}_loss.png")
     plt.savefig(save_fn)
 
 
@@ -49,7 +53,7 @@ def plot_result(generator, noise, num_epoch, fig_size=(5, 5), net_name="", datas
 
     n_rows = np.sqrt(noise.size()[0]).astype(np.int32)
     n_cols = np.sqrt(noise.size()[0]).astype(np.int32)
-    fig, axes = plt.subplots(n_rows, n_cols, fig_size)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=fig_size)
     for ax, img in zip(axes.flatten(), gen_img):
         ax.axis('off')
         ax.set_adjustable('box-forced')
@@ -59,8 +63,19 @@ def plot_result(generator, noise, num_epoch, fig_size=(5, 5), net_name="", datas
 
     if not os.path.exists(config.save_dir):
         os.mkdir(config.save_dir)
-    save_fn = os.path.join(config.save_dir, f"{dataset_name}_{net_name}_{num_epoch+1}.png")
+    save_fn = os.path.join(config.save_dir, f"{dataset_name}_{net_name}_{num_epoch+1}_result.png")
     plt.savefig(save_fn)
+
+
+# @torchsnooper.snoop()
+def plot_sample(generator, noise, num_epoch, net_name="", dataset_name=""):
+    generator.eval()
+
+    os.makedirs(config.save_dir, exist_ok=True)
+    f = os.path.join(config.save_dir, f"{dataset_name}_{net_name}_{num_epoch+1}_result.jpg")
+    torchvision.utils.save_image(generator(noise).data, f, normalize=True, nrow=config.nrow)
+
+    generator.train()
 
 
 def count_time(prev_time, cur_time):
@@ -116,3 +131,25 @@ def load_weight(pretrained_dict, model):
     model_dict.update(pretrained_dict)
     model.load_state_dict(model_dict)
     return model
+
+
+def gradient_penalty(D, real_samples, fake_samples):
+
+    alpha = Tensor(np.random.random((real_samples.size(0), 1, 1, 1)))
+    # Get random interpolation between real and fake samples
+    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
+    d_interpolates = D(interpolates).squeeze()
+    real_samples = real_samples.shape[0]
+    fake = Tensor(real_samples).fill_(1.0)
+    # Get gradient w.r.t. interpolates
+    gradients = autograd.grad(
+        outputs=d_interpolates,
+        inputs=interpolates,
+        grad_outputs=fake,
+        create_graph=True,
+        retain_graph=True,
+        only_inputs=True,
+    )[0]
+    gradients = gradients.view(gradients.size(0), -1)
+    gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    return gradient_penalty

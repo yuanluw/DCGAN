@@ -20,14 +20,14 @@ class DC_Generator(nn.Module):
         self.hidden_layer = nn.Sequential()
         for i in range(len(num_filter)):
             if i == 0:
-                deconv = nn.ConvTranspose2d(input_dim, num_filter[i], kernel_size=4, stride=1, padding=0)
+                deconv = nn.ConvTranspose2d(input_dim, num_filter[i], kernel_size=4, stride=1, padding=0,
+                                            output_padding=0, bias=False)
             else:
-                deconv = nn.ConvTranspose2d(num_filter[i-1], num_filter[i], kernel_size=4, stride=2, padding=1)
+                deconv = nn.ConvTranspose2d(num_filter[i-1], num_filter[i], kernel_size=5, stride=2, padding=2,
+                                            output_padding=1, bias=False)
 
             deconv_name = 'deconv' + str(i+1)
             self.hidden_layer.add_module(deconv_name, deconv)
-            nn.init.normal_(deconv.weight, mean=0.0, std=0.02)
-            nn.init.constant_(deconv.bias, 0.0)
 
             bn_name = "bn" + str(i+1)
             self.hidden_layer.add_module(bn_name, nn.BatchNorm2d(num_filter[i]))
@@ -37,10 +37,9 @@ class DC_Generator(nn.Module):
 
         self.output_layer = nn.Sequential()
 
-        out = nn.ConvTranspose2d(num_filter[i], output_dim, kernel_size=4, stride=2, padding=1)
+        out = nn.ConvTranspose2d(num_filter[i], output_dim, kernel_size=5, stride=2, padding=2, output_padding=1,
+                                 bias=False)
         self.output_layer.add_module('out', out)
-        nn.init.normal_(out.weight, mean=0.0, std=0.02)
-        nn.init.constant_(out.bias, 0.0)
         self.output_layer.add_module('act', torch.nn.Tanh())
         self.verbose = verbose
 
@@ -70,12 +69,8 @@ class DC_Discriminator(nn.Module):
             conv_name = 'conv' + str(i+1)
             self.hidden_layer.add_module(conv_name, conv)
 
-            nn.init.normal_(conv.weight, mean=0.0, std=0.02)
-            nn.init.constant_(conv.bias, 0.0)
-
-            if i != 0:
-                bn_name = 'bn' + str(i+1)
-                self.hidden_layer.add_module(bn_name, nn.BatchNorm2d(num_filters[i]))
+            bn_name = 'bn' + str(i+1)
+            self.hidden_layer.add_module(bn_name, nn.BatchNorm2d(num_filters[i]))
 
             act_name = "act" + str(i + 1)
             self.hidden_layer.add_module(act_name, nn.LeakyReLU(0.2))
@@ -83,9 +78,6 @@ class DC_Discriminator(nn.Module):
         self.output_layer = nn.Sequential()
         out = nn.Conv2d(num_filters[i], output_dim, kernel_size=4, stride=1, padding=0)
         self.output_layer.add_module("out", out)
-        nn.init.normal_(out.weight, mean=0.0, std=0.02)
-        nn.init.constant_(out.bias, 0.0)
-        self.output_layer.add_module('act', nn.Sigmoid())
         self.verbose = verbose
 
     def forward(self, x):
@@ -97,7 +89,63 @@ class DC_Discriminator(nn.Module):
         out = self.output_layer(h)
         if self.verbose:
             print("output_layer x: ", out.shape)
-        return out
+        return out.view(out.shape[0])
+
+
+class Generator(nn.Module):
+    def __init__(self, ch=8):
+        super(Generator, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.ConvTranspose2d(100, ch * 8, 4, 1, 0, 0, bias=False),
+            nn.BatchNorm2d(ch * 8),
+            nn.ReLU(inplace=True),
+
+            nn.ConvTranspose2d(ch * 8, ch * 4, 5, 2, 2, 1, bias=False),
+            nn.BatchNorm2d(ch * 4),
+            nn.ReLU(inplace=True),
+
+            nn.ConvTranspose2d(ch * 4, ch * 2, 5, 2, 2, 1, bias=False),
+            nn.BatchNorm2d(ch * 2),
+            nn.ReLU(inplace=True),
+
+            nn.ConvTranspose2d(ch * 2, ch, 5, 2, 2, 1, bias=False),
+            nn.BatchNorm2d(ch),
+            nn.ReLU(inplace=True),
+
+            nn.ConvTranspose2d(ch, 1, 5, 2, 2, 1, bias=False),
+            nn.Tanh()
+        )
+
+    def forward(self, input_):
+        return self.conv(input_)
+
+
+class Discriminator(nn.Module):
+    def __init__(self, ch=8):
+        super(Discriminator, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(1, ch, 4, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(ch, ch * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ch * 2),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(ch * 2, ch * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ch * 4),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(ch * 4, ch * 8, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ch * 8),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(ch * 8, 1, 4, 1, 0, bias=False),
+        )
+
+    def forward(self, input_):
+        return self.conv(input_).view(input_.size(0))
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ import torch
 
 num_worker = 8
 
-image_size = 32
+image_size = 64
 
 checkpoint_path = '/home/wyl/codeFile/DCGAN/pre_train'
 
@@ -18,8 +18,16 @@ G_input_dim = 100
 G_output_dim = 1
 D_input_dim = 1
 D_output_dim = 1
-num_filters = [1024, 512, 256, 128]
+num_filters = [256, 128, 64, 16]
 
 save_dir = '/home/wyl/codeFile/DCGAN/result'
 
-print_freq = 100
+print_freq = 20
+
+clip = 0.01
+
+n_critic = 3
+
+lambda_gp = 10
+
+nrow = 16

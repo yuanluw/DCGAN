@@ -70,7 +70,7 @@ class DC_Discriminator(nn.Module):
             self.hidden_layer.add_module(conv_name, conv)
 
             bn_name = 'bn' + str(i+1)
-            self.hidden_layer.add_module(bn_name, nn.BatchNorm2d(num_filters[i]))
+            self.hidden_layer.add_module(bn_name, nn.InstanceNorm2d(num_filters[i], affine=True))
 
             act_name = "act" + str(i + 1)
             self.hidden_layer.add_module(act_name, nn.LeakyReLU(0.2))

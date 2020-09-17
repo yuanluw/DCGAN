@@ -20,7 +20,7 @@ from dataset.cifar_dataset import get_cifar_dataset
 from model.DCGAN import DC_Generator, DC_Discriminator, Generator, Discriminator
 import config
 from utils import count_time, get_logger, AverageMeter, plot_loss, plot_sample, save_checkpoint, load_weight, \
-    gradient_penalty
+    calc_gradient_penalty
 
 cur_path = os.path.abspath(os.path.dirname(__file__))
 
@@ -33,13 +33,17 @@ def run(arg):
     print("====>Loading data")
     if arg.dataset == 'mnist':
        train_data = get_mnist_dataset("train", arg.batch_size)
+       G_output_dim = config.mnist_G_output_dim
+       D_input_dim = config.mnist_D_input_dim
     elif arg.dataset == 'cifar':
         train_data = get_cifar_dataset("train", arg.batch_size)
+        G_output_dim = config.cifar_G_output_dim
+        D_input_dim = config.cifar_D_input_dim
 
     print("====>Building model")
     if arg.net == "DCGAN":
-        g_net = DC_Generator(config.G_input_dim, config.num_filters, config.G_output_dim, verbose=False)
-        d_net = DC_Discriminator(config.D_input_dim, config.num_filters[::-1], config.D_output_dim, verbose=False)
+        g_net = DC_Generator(config.G_input_dim, config.num_filters, G_output_dim, verbose=False)
+        d_net = DC_Discriminator(D_input_dim, config.num_filters[::-1], config.D_output_dim, verbose=False)
 
         # g_net = Generator()
         # d_net = Discriminator()
@@ -47,8 +51,8 @@ def run(arg):
         g_net = g_net.to(config.device)
         d_net = d_net.to(config.device)
 
-    g_optimizer = optim.RMSprop(g_net.parameters(), lr=arg.lr)
-    d_optimizer = optim.RMSprop(d_net.parameters(), lr=arg.lr)
+    g_optimizer = optim.Adam(g_net.parameters(), lr=arg.lr, betas=(0.5, 0.9))
+    d_optimizer = optim.Adam(d_net.parameters(), lr=arg.lr, betas=(0.5, 0.9))
 
     if arg.mul_gpu:
         g_net = nn.DataParallel(g_net)
@@ -112,7 +116,9 @@ def train(train_data, g_net, d_net, criterion, g_optimizer, d_optimizer, epoch, 
         z_ = Variable(z_.cuda())
 
         gen_img = g_net(z_).detach()
-        d_loss = -d_net(x_).mean() + d_net(gen_img).mean()
+        gradient_penalty = calc_gradient_penalty(d_net, x_.data, gen_img.data)
+        # print(gradient_penalty, -d_net(x_).mean(), d_net(gen_img).mean())
+        d_loss = -d_net(x_).mean() + d_net(gen_img).mean() # + config.lambda_gp * gradient_penalty
 
         # bp
         d_optimizer.zero_grad()

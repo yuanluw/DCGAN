@@ -133,12 +133,13 @@ def load_weight(pretrained_dict, model):
     return model
 
 
-def gradient_penalty(D, real_samples, fake_samples):
+def calc_gradient_penalty(D, real_samples, fake_samples):
 
     alpha = Tensor(np.random.random((real_samples.size(0), 1, 1, 1)))
+    alpha = alpha.to(config.device)
     # Get random interpolation between real and fake samples
     interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
-    d_interpolates = D(interpolates).squeeze()
+    d_interpolates = D(interpolates)
     real_samples = real_samples.shape[0]
     fake = Tensor(real_samples).fill_(1.0)
     # Get gradient w.r.t. interpolates

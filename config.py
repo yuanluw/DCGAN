@@ -15,8 +15,12 @@ checkpoint_path = '/home/wyl/codeFile/DCGAN/pre_train'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 G_input_dim = 100
-G_output_dim = 1
-D_input_dim = 1
+mnist_G_output_dim = 1
+mnist_D_input_dim = 1
+
+cifar_G_output_dim = 3
+cifar_D_input_dim = 3
+
 D_output_dim = 1
 num_filters = [256, 128, 64, 16]
 
@@ -26,8 +30,8 @@ print_freq = 20
 
 clip = 0.01
 
-n_critic = 3
+n_critic = 5
 
 lambda_gp = 10
 
-nrow = 16
+nrow = 8

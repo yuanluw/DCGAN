@@ -17,7 +17,7 @@ import config
 train_transform = transforms.Compose([
     transforms.Resize(config.image_size),
     transforms.ToTensor(),
-    # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 ])
 
 test_transform = transforms.Compose([

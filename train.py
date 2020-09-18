@@ -26,8 +26,8 @@ cur_path = os.path.abspath(os.path.dirname(__file__))
 
 
 def run(arg):
-    # torch.manual_seed(7)
-    # np.random.seed(7)
+    torch.manual_seed(7)
+    np.random.seed(7)
     print("lr %f, epoch_num %d, decay_rate %f gamma %f" % (arg.lr, arg.epochs, arg.decay, arg.gamma))
 
     print("====>Loading data")
@@ -118,14 +118,14 @@ def train(train_data, g_net, d_net, criterion, g_optimizer, d_optimizer, epoch, 
         gen_img = g_net(z_).detach()
         gradient_penalty = calc_gradient_penalty(d_net, x_.data, gen_img.data)
         # print(gradient_penalty, -d_net(x_).mean(), d_net(gen_img).mean())
-        d_loss = -d_net(x_).mean() + d_net(gen_img).mean() # + config.lambda_gp * gradient_penalty
+        d_loss = -d_net(x_).mean() + d_net(gen_img).mean() + config.lambda_gp * gradient_penalty
 
         # bp
         d_optimizer.zero_grad()
         d_loss.backward()
         d_optimizer.step()
-        for p in d_net.parameters():
-            p.data.clamp_(-config.clip, config.clip)
+        # for p in d_net.parameters():
+        #     p.data.clamp_(-config.clip, config.clip)
 
         if i % config.n_critic == 0:
             z_ = torch.randn(mini_batch, config.G_input_dim).view(-1, config.G_input_dim, 1, 1)
